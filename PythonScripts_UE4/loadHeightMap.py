@@ -217,6 +217,12 @@ def main():
 if __name__ == "__main__" :
   wScriptFileName = sys.argv[0]
   unreal.log("Starting Script [{}]".format(wScriptFileName))
+
+  wCount = 0
+  for wArg in sys.argv:
+    print("arg {} : {}".format(wCount, wArg))
+    wCount = wCount + 1
+
   main()
   unreal.log("Ending Script [{}]".format(wScriptFileName))
 
