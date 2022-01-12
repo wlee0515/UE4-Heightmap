@@ -3,7 +3,7 @@
 # Author: Wilson Lee
 #
 # Purpose:
-# This script creates a copy of an UE4 project and renames the ".uproject" file to match folder name 
+#   This script creates a copy of an UE4 project and renames the ".uproject" file to match folder name 
 #
 # Arguments:
 #   arg 1    .uproject (path)   
@@ -86,14 +86,24 @@ def cloneProjectFiles_UE4(iSourceProjectPath, iDestinationFolder, iNewProjectNam
 
 
 def main():
-  for Arg in sys.argv:
-    print(Arg)
+  
   wRequiredArgumentCount = 3
   wNumberOfArguments = len(sys.argv)
 
+  wNotEnoughArguments = False
+
   if wRequiredArgumentCount + 1 > wNumberOfArguments:
     print("Insufficient Argument Count. Expected {}, received {}".format(wRequiredArgumentCount, wNumberOfArguments - 1))
-    return False
+    wNotEnoughArguments = True
+
+  if wNotEnoughArguments:
+    print("Purpose :")
+    print("  This script creates a copy of an UE4 project and renames the \".uproject\" file to match folder name ")
+    print("Usuage :")
+    print("  argument 1 : .uproject (path)")
+    print("  argument 2 : Destination Folder (path)")
+    print("  argument 3 : New Project Name (path) ")
+    return
 
   return cloneProjectFiles_UE4(sys.argv[1],sys.argv[2], sys.argv[3])
 
