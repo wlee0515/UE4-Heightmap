@@ -20,7 +20,7 @@ gRepositoryFolder = pathlib.Path(__file__).parent.resolve()
 gRepositoryFolder = str(gRepositoryFolder).replace("\\", "/")
 gTemplateProjectPath = os.path.join(gRepositoryFolder, "Template/TemplateProject/TemplateProject.uproject")
 gPythonScriptsFolder = os.path.join(gRepositoryFolder, "PythonScripts")
-gUnrealPythonScriptsFolder = os.path.join(gRepositoryFolder, "UnrealPythonScripts")
+gUnrealPythonScriptsFolder = os.path.join(gRepositoryFolder, "PythonScripts_UE4")
 gPythonExe = sys.executable
 
 gUnrealEditorCmdExe = "C:/Program Files/Epic Games/UE_4.27/Engine/Binaries/Win64/UE4Editor-Cmd.exe"
