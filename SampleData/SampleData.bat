@@ -1,7 +1,9 @@
 cls
 echo Deleting Output Directory
 
-del /s /f /q ..\Output\*.*
-for /f %%f in ('dir /ad /b ..\Output\') do rd /s /q ..\Output\%%f
+set ENV_PROJECT_OUTPUTPATH="..\Output"
 
-python ..\createHeightmapProject.py ".\Heightmap.png" "..\Output" "SampleData" 4
+del /s /f /q %ENV_PROJECT_OUTPUTPATH%\*.*
+for /f %%f in ('dir /ad /b %ENV_PROJECT_OUTPUTPATH%\') do rd /s /q %ENV_PROJECT_OUTPUTPATH%\%%f
+
+python ..\createHeightmapProject.py ".\Heightmap.png" %ENV_PROJECT_OUTPUTPATH% "SampleData" 4
