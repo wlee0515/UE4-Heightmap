@@ -90,6 +90,8 @@ def main():
     wNotEnoughArguments = True
 
   if wNotEnoughArguments:
+    print("Purpose")
+    print("  This script splits an image to the recommended heightmap Size provided by Unreal.")
     print("Usuage :")
     print("  argument 1 : ImagePath (path)")
     print("  argument 2 : Destination Folder (path)")
