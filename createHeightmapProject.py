@@ -16,6 +16,8 @@
 import sys, os, shutil, subprocess
 import pathlib
 
+gUnrealResolution = [127,253,505,1009,2017,4033,8129]
+
 gRepositoryFolder = pathlib.Path(__file__).parent.resolve()
 gRepositoryFolder = os.path.abspath(gRepositoryFolder).replace("\\", "/")
 gTemplateProjectPath = os.path.join(gRepositoryFolder, "Template/TemplateProject/TemplateProject.uproject").replace("\\", "/")
@@ -24,9 +26,8 @@ gUnrealPythonScriptsFolder = os.path.join(gRepositoryFolder, "PythonScripts_UE4"
 gPythonExe = sys.executable
 
 gUnrealEditorCmdExe = "C:/Program Files/Epic Games/UE_4.27/Engine/Binaries/Win64/UE4Editor-Cmd.exe".replace("\\", "/")
-gUnrealPyScript = os.path.join(gUnrealPythonScriptsFolder, "loadHeightMap.py").replace("\\", "/")
+gUnrealPyScript = os.path.join(gUnrealPythonScriptsFolder, "loadHeightmapTiles.py").replace("\\", "/")
 
-gUnrealResolution = [127,253,505,1009,2017,4033,8129]
 
 def createHeightmapProject(iHeightmapFilePath, iDestinationFolder, iNewProjectName, iResolutionId):
 
@@ -64,7 +65,7 @@ def createHeightmapProject(iHeightmapFilePath, iDestinationFolder, iNewProjectNa
   , "-stdout"
   , "-FullStdOutLogOutput"
   , "-run=pythonscript"
-  , "-script={} {}".format(gUnrealPyScript, wHeightMapTileFolder)])
+  , "-script={} {} {}".format(gUnrealPyScript, wHeightMapTileFolder, "{}".format(iResolutionId))])
 
 def main():
   
