@@ -187,3 +187,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Custom Ignore folders
+Output/*
+Template/TemplateProject/Saved/*
+Template/TemplateProject/Intermediate/*
