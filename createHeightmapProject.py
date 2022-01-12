@@ -17,18 +17,35 @@ import sys, os, shutil, subprocess
 import pathlib
 
 gRepositoryFolder = pathlib.Path(__file__).parent.resolve()
-gRepositoryFolder = str(gRepositoryFolder).replace("\\", "/")
-gTemplateProjectPath = os.path.join(gRepositoryFolder, "Template/TemplateProject/TemplateProject.uproject")
-gPythonScriptsFolder = os.path.join(gRepositoryFolder, "PythonScripts")
-gUnrealPythonScriptsFolder = os.path.join(gRepositoryFolder, "PythonScripts_UE4")
+gRepositoryFolder = os.path.abspath(gRepositoryFolder).replace("\\", "/")
+gTemplateProjectPath = os.path.join(gRepositoryFolder, "Template/TemplateProject/TemplateProject.uproject").replace("\\", "/")
+gPythonScriptsFolder = os.path.join(gRepositoryFolder, "PythonScripts").replace("\\", "/")
+gUnrealPythonScriptsFolder = os.path.join(gRepositoryFolder, "PythonScripts_UE4").replace("\\", "/")
 gPythonExe = sys.executable
 
-gUnrealEditorCmdExe = "C:/Program Files/Epic Games/UE_4.27/Engine/Binaries/Win64/UE4Editor-Cmd.exe"
-gUnrealPyScript = os.path.join(gUnrealPythonScriptsFolder, "loadHeightMap.py")
+gUnrealEditorCmdExe = "C:/Program Files/Epic Games/UE_4.27/Engine/Binaries/Win64/UE4Editor-Cmd.exe".replace("\\", "/")
+gUnrealPyScript = os.path.join(gUnrealPythonScriptsFolder, "loadHeightMap.py").replace("\\", "/")
 
 gUnrealResolution = [127,253,505,1009,2017,4033,8129]
 
 def createHeightmapProject(iHeightmapFilePath, iDestinationFolder, iNewProjectName, iResolutionId):
+
+  iHeightmapFilePath = os.path.abspath(iHeightmapFilePath).replace("\\", "/")
+  iDestinationFolder = os.path.abspath(iDestinationFolder).replace("\\", "/")
+
+  if ' ' in gRepositoryFolder:
+    print("There are \' \' in the repository directory path. Due to limitation with the Unreal Command Line Interface, please choose a directory without \' \' in the folder path.")
+    print("The repository directory path is : [{}]".format(gRepositoryFolder))
+    return
+
+  if ' ' in iDestinationFolder:
+    print("There are \' \' in the Destination directory path. Due to limitation with the Unreal Command Line Interface, please choose a directory without \' \' in the folder path.")
+    print("The Destination directory path is : [{}]".format(iDestinationFolder))
+    return
+  
+  if False == os.path.isdir(iDestinationFolder):
+    os.makedirs(iDestinationFolder)
+
   # Create Project
   wCloneProjectFilesPath = os.path.join(gPythonScriptsFolder, "cloneProjectFiles.py")
   wProcess_CloneProject = subprocess.run([gPythonExe,  wCloneProjectFilesPath, gTemplateProjectPath, iDestinationFolder, iNewProjectName])
@@ -47,7 +64,7 @@ def createHeightmapProject(iHeightmapFilePath, iDestinationFolder, iNewProjectNa
   , "-stdout"
   , "-FullStdOutLogOutput"
   , "-run=pythonscript"
-  , "-script=\"{}\"".format(gUnrealPyScript, wHeightMapTileFolder)])
+  , "-script={} {}".format(gUnrealPyScript, wHeightMapTileFolder)])
 
 def main():
   
