@@ -16,6 +16,7 @@
 import sys, os, shutil, subprocess
 import pathlib
 
+gLaunchUnrealEditor = False
 gUnrealResolution = [127,253,505,1009,2017,4033,8129]
 
 gRepositoryFolder = pathlib.Path(__file__).parent.resolve()
@@ -56,16 +57,25 @@ def createHeightmapProject(iHeightmapFilePath, iDestinationFolder, iNewProjectNa
   wSplitImageToUnrealSizePath = os.path.join(gPythonScriptsFolder, "splitImageToUnrealSize.py")
   wProcess_SplitHeightMap = subprocess.run([gPythonExe,  wSplitImageToUnrealSizePath, iHeightmapFilePath, wHeightMapTileFolder, "{}".format(iResolutionId)])
 
-  # Execute Unreal Python Script
   wProjectPath = os.path.join(iDestinationFolder, "{}/{}.uproject".format(iNewProjectName, iNewProjectName))
   wProjectPath = os.path.abspath(wProjectPath)
-  wProcess_UnrealPython = subprocess.run([
-    gUnrealEditorCmdExe
-  , wProjectPath
-  , "-stdout"
-  , "-FullStdOutLogOutput"
-  , "-run=pythonscript"
-  , "-script={} {} {}".format(gUnrealPyScript, wHeightMapTileFolder, "{}".format(iResolutionId))])
+
+  # Execute Unreal Python Script
+  if True == gLaunchUnrealEditor:
+    wProcess_UnrealPython = subprocess.run([
+      gUnrealEditorCmdExe
+    , wProjectPath
+    , "-ExecutePythonScript={} {} {}".format(gUnrealPyScript, wHeightMapTileFolder, "{}".format(iResolutionId))])
+
+  else:
+    wProcess_UnrealPython = subprocess.run([
+      gUnrealEditorCmdExe
+    , wProjectPath
+    , "-stdout"
+    , "-FullStdOutLogOutput"
+    , "-run=pythonscript"
+    , "-script={} {} {}".format(gUnrealPyScript, wHeightMapTileFolder, "{}".format(iResolutionId))])
+
 
 def main():
   
