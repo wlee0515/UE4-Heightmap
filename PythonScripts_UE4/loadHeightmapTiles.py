@@ -23,12 +23,12 @@ gDeleteIntermediateFiles = False
 gIntermediateFolder_path = "/Game/Intermediate"
 gOutputFolder_path = "/Game/Map/Sections"
 
-gTemplateLevelPath = "/Game/Template/L_Template_2017"
-gHeightMapPathList = [
-  "C:/Users/willee/Desktop/HeightMapTiles/map_X4_Y1_Mode_2.png"
-  ,"C:/Users/willee/Desktop/HeightMapTiles/map_X4_Y1_Mode.png"
-  ,"C:/Users/willee/Desktop/HeightMapTiles/map_blur_Tiles/map_blur_X6_Y2.png"
-]
+gD_DebugMaterialPath = "/Game/DebugTools/D_M_TestMaterial"
+gD_UseDebugMaterial = False
+
+gD_DebugRenderTargetPath = "/Game/DebugTools/D_RT_MaterialTest"
+gD_UseDebugRenderTarget = False
+
 
 def createLevel(wNewLevelPath, iTemplateLevelPath):
   # Instances of Unreal classes
@@ -52,7 +52,7 @@ def loadLevel(iLevelPath):
   if True == editor_level.load_level(iLevelPath):
     unreal.log("Level load [{}] : Successful".format(iLevelPath))
   else:
-    unreal.log("Level load [{}] : Not successful".format(iLevelPath))
+    unreal.log_error("Level load [{}] : Not successful".format(iLevelPath))
 
   # get World Context, must be after loading level
   wWorld = unreal.EditorLevelLibrary.get_editor_world()
@@ -75,7 +75,7 @@ def deleteDirectory(iDirectoryPath):
   if True == editor_asset.delete_directory(iDirectoryPath):
     unreal.log("Deleting Successful [{}]".format(iDirectoryPath))
   else:
-    unreal.log("Deleting Not successful [{}]".format(iDirectoryPath))
+    unreal.log_error("Deleting Not successful [{}]".format(iDirectoryPath))
   
   if True == os.path.isdir(iDirectoryPath):
     shutil.rmtree(iDirectoryPath)
@@ -91,149 +91,7 @@ def deleteAsset(iAssetPath):
   if True == editor_asset.delete_asset(iAssetPath):
     unreal.log("Deleting Successful [{}]".format(iAssetPath))
   else:
-    unreal.log("Deleting Not successful [{}]".format(iAssetPath))
-
-
-def importTerrain(iWorldContext):
-
-  # Instances of Unreal classes
-  system_lib = unreal.SystemLibrary()
-  editor_util = unreal.EditorUtilityLibrary()
-  editor_level = unreal.EditorLevelLibrary()
-  editor_asset = unreal.EditorAssetLibrary()
-  string_lib = unreal.StringLibrary()
-  render_lib = unreal.RenderingLibrary()
-  material_Edit_lib = unreal.MaterialEditingLibrary()
-  asset_Tools = unreal.AssetToolsHelpers.get_asset_tools()
-
-  wIntermediateAssetPath = "{}/Maps".format(gIntermediateFolder_path)
-
-  unreal.log("Break-------------")
-
-  # Clear Intermediate Files
-  deleteDirectory(wIntermediateAssetPath)
-
-  unreal.log("Break-------------")
-
-  # Importing Heightmap Textures
-  wData = unreal.AutomatedAssetImportData()
-  wData.set_editor_property('destination_path', "{}/HeightMaps".format(wIntermediateAssetPath))
-  wData.set_editor_property('filenames', gHeightMapPathList)
-  wList_HeightMaptexture2D = unreal.AssetToolsHelpers.get_asset_tools().import_assets_automated(wData)
-
-  unreal.log("Break-------------")
-
-  # Create a material.
-  unreal.log("Building Render Target Material")
-
-  wMaterialFactory = unreal.MaterialFactoryNew()
-  wMaterial = asset_Tools.create_asset("M_LandscapeBrush", gIntermediateFolder_path, unreal.Material, wMaterialFactory)
-
-  wMaterial.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ALPHA_COMPOSITE)
-  wMaterial.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
-
-  wTextureSampleNode = material_Edit_lib.create_material_expression(wMaterial, unreal.MaterialExpressionTextureSample, -384,0)
-  material_Edit_lib.connect_material_property(wTextureSampleNode, "RGB", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
-  wTextureSampleNode.texture = wList_HeightMaptexture2D[0]
-  #wTextureSampleNode.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
-  wTextureSampleNode.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-  
-  wConstantNode = material_Edit_lib.create_material_expression(wMaterial, unreal.MaterialExpressionConstant, -384,300)
-  wConstantNode.set_editor_property('R', 0.0)
-  material_Edit_lib.connect_material_property(wConstantNode, "", unreal.MaterialProperty.MP_OPACITY)
-
-  unreal.log("Saving Intermediate Folder")
-  editor_asset.save_directory(gIntermediateFolder_path)
-
-  unreal.log("Break-------------")
-
-  # get List of Landscapes
-  wLandScapeList = unreal.GameplayStatics.get_all_actors_of_class(iWorldContext, unreal.Landscape)
- 
-  if 0 == len(wLandScapeList):
-    unreal.log("Landscape not found")
-  else:
-    unreal.log("Landscape was found")
-
-  unreal.log("Number of Actors found {}".format(len(wLandScapeList)))
-
-  for actor in wLandScapeList:
-
-    unreal.log("Break-------------")
-
-    unreal.log(actor)
-
-    unreal.log("Creating Height Map texture")
-
-    unreal.log("Creating Textured Render Target 2D")
-
-    wTextureRenderTargetFactory = unreal.TextureRenderTargetFactoryNew()
-    wTexturedRenderTarget2D = asset_Tools.create_asset("RT_{}".format(actor.get_name()), "{}/HeightMapRenderTagets".format(wIntermediateAssetPath), unreal.TextureRenderTarget2D, wTextureRenderTargetFactory)
-    wTexturedRenderTarget2D.set_editor_property("size_x", 2017)
-    wTexturedRenderTarget2D.set_editor_property("size_y", 2017)
-    wTexturedRenderTarget2D.set_editor_property("render_target_format", unreal.TextureRenderTargetFormat.RTF_RGBA16F)
-    wTexturedRenderTarget2D.set_editor_property("clear_color", [0.0,0.0,0.0,1.0])
-
-    #wTexturedRenderTarget2D = render_lib.create_render_target2d(iWorldContext, width=2017, height=2017, format=unreal.TextureRenderTargetFormat.RTF_RGBA8, clear_color=[0.0,0.0,0.0,1.0])
-
-    unreal.log("Drawing material to Textured Render Target 2D")
-
-    render_lib.clear_render_target2d(iWorldContext, wTexturedRenderTarget2D, clear_color=[0.000000, 0.000000, 0.000000, 1.000000])
-    render_lib.draw_material_to_render_target(iWorldContext, wTexturedRenderTarget2D, wMaterial)
-
-    editor_asset.save_asset(wTexturedRenderTarget2D.get_path_name())
-    unreal.log("Complete Drawing material to Textured Render Target 2D")
-
-#    select_assets = editor_util.get_selected_assets()
-#    if 0 != len(select_assets):
-#      wTexturedRenderTarget2D = select_assets[0]
-
-
-    if True == actor.landscape_import_heightmap_from_render_target(wTexturedRenderTarget2D, import_height_from_rg_channel=True):
-      unreal.log("Import Terrain Heightmap Successful")
-    else:
-      unreal.log("Import Terrain Heightmap NOT Successful")
-
-  unreal.log("Break-------------")
-
-  unreal.log("Saving Intermediate Folder")
-  editor_asset.save_directory(wIntermediateAssetPath)
-
-  editor_level.save_current_level()
-
-  
-def createLandscapeActor(iWorldContext):
-
-  # get List of Landscapes
-  wLandScapeList = unreal.GameplayStatics.get_all_actors_of_class(iWorldContext, unreal.Landscape)
-
-  wLandscapeActor = unreal.EditorLevelLibrary().spawn_actor_from_object(wLandScapeList[0].static_class(), location=[0.000000, 0.000000, 10.000000], rotation=[1.000000, 0.000000, 1.000000])
-  
-  unreal.log(wLandscapeActor)
-
-def main2():
-  
-  deleteDirectory(gIntermediateFolder_path)
-
-  wNewLevelName = "Level_02"
-  wIntermediateNewLevelPath = "{}/Sections/{}".format(gIntermediateFolder_path, wNewLevelName)
-  wOutputNewLevelPath = "{}/Sections/{}".format(gOutputFolder_path, wNewLevelName)
-
-  createLevel(wIntermediateNewLevelPath, gTemplateLevelPath)
-  wWorldContext = loadLevel(wIntermediateNewLevelPath)
-  #createLandscapeActor(wWorldContext)
-  importTerrain(wWorldContext)
-  
-  
-  deleteAsset(wOutputNewLevelPath)
-  unreal.EditorAssetLibrary().duplicate_directory("/Game/Intermediate/Sections", "/Game/Map/Sections")
-
-
-  wWorldContext = loadLevel("/Game/Map/FullMap")
-
-  if True == gDeleteIntermediateFiles:
-    deleteDirectory(gIntermediateFolder_path)
-  return
+    unreal.log_error("Deleting Not successful [{}]".format(iAssetPath))
 
 
 def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResolutionId):
@@ -247,19 +105,19 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
   material_Edit_lib = unreal.MaterialEditingLibrary()
   render_lib = unreal.RenderingLibrary()
 
-  print("Break-------------")
+  unreal.log("Break-------------")
   # Load Level
   if True == editor_level.load_level(iLevelPath):
-    print("Level load [{}] : Successful".format(iLevelPath))
+    unreal.log("Level load [{}] : Successful".format(iLevelPath))
   else:
-    print("Level load [{}] : Not successful".format(iLevelPath))
+    unreal.log_error("Level load [{}] : Not successful".format(iLevelPath))
 
   # get World Context, must be after loading level
   wWorldContext = editor_level.get_editor_world()
 
-  print("Break-------------")
+  unreal.log("Break-------------")
 
-  print("Importing Heightmap Tile as Texture : {}")
+  unreal.log("Importing Heightmap Tile as Texture : {}")
   # Importing Heightmap Textures
   wData = unreal.AutomatedAssetImportData()
   wData.set_editor_property('destination_path', "{}/Texture2d".format(wIntermediateAssetPath))
@@ -267,14 +125,16 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
   wList_HeightMaptexture2D = asset_Tools.import_assets_automated(wData)
 
   if 0 == len(wList_HeightMaptexture2D):
-    print("Error Importing Heightmap")
+    unreal.log_error("Error Importing Heightmap")
     return False
 
+  unreal.log("Saving Texture2D")
+  editor_asset.save_asset(wList_HeightMaptexture2D[0].get_path_name())
 
-  print("Break-------------")
+  unreal.log("Break-------------")
 
   # Create a material.
-  print("Building Render Target Material")
+  unreal.log("Building Render Target Material")
 
   wMaterialFactory = unreal.MaterialFactoryNew()
   wMaterial = asset_Tools.create_asset("M_{}".format(iAssetName), "{}/LandscapeBrush".format(wIntermediateAssetPath), unreal.Material, wMaterialFactory)
@@ -289,59 +149,78 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
   wTextureSampleNode.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
   
   wConstantNode = material_Edit_lib.create_material_expression(wMaterial, unreal.MaterialExpressionConstant, -384,300)
-  wConstantNode.set_editor_property('R', 0.0)
+  wConstantNode.set_editor_property('R', 1.0)
   material_Edit_lib.connect_material_property(wConstantNode, "", unreal.MaterialProperty.MP_OPACITY)
 
-  print("Saving Intermediate Folder")
-  editor_asset.save_directory(gIntermediateFolder_path)
+  unreal.log("Saving Material")
+  editor_asset.save_asset(wMaterial.get_path_name())
 
-  print("Break-------------")
+  unreal.log("Break-------------")
 
   # get List of Landscapes
   wLandScapeList = unreal.GameplayStatics.get_all_actors_of_class(wWorldContext, unreal.Landscape)
  
   if 0 == len(wLandScapeList):
-    print("Landscape not found")
+    unreal.log_error("Landscape not found")
     return False
   else:
-    print("Landscape was found")
+    unreal.log("Landscape was found")
 
-  print("Number of Actors found {}".format(len(wLandScapeList)))
+  unreal.log("Number of Actors found {}".format(len(wLandScapeList)))
 
   for actor in wLandScapeList:
 
-    print("Break-------------")
+    unreal.log("Break-------------")
 
-    print(actor)
+    unreal.log(actor)
 
-    print("Creating Textured Render Target 2D")
+    unreal.log("Creating Textured Render Target 2D")
 
-    wTextureRenderTargetFactory = unreal.TextureRenderTargetFactoryNew()
-    wTexturedRenderTarget2D = asset_Tools.create_asset("RT_{}_{}".format(iAssetName, actor.get_name()), "{}/HeightMapRenderTagets".format(wIntermediateAssetPath), unreal.TextureRenderTarget2D, wTextureRenderTargetFactory)
-    wTexturedRenderTarget2D.set_editor_property("size_x", gUnrealResolution[iResolutionId])
-    wTexturedRenderTarget2D.set_editor_property("size_y", gUnrealResolution[iResolutionId])
-    wTexturedRenderTarget2D.set_editor_property("render_target_format", unreal.TextureRenderTargetFormat.RTF_RGBA16F)
-    wTexturedRenderTarget2D.set_editor_property("clear_color", [0.0,0.0,0.0,1.0])
+    wTexturedRenderTarget2D = None
 
-    if None == wTexturedRenderTarget2D:
-      print("Was not able to generate Textured Render Target 2D")
+    if True == gD_UseDebugRenderTarget:
+      wTexturedRenderTarget2D = editor_asset.load_asset(gD_DebugRenderTargetPath)
+      if None == wTexturedRenderTarget2D:
+        unreal.log_error("Unable to find Debug Render Target 2D {}".format(gD_DebugRenderTargetPath))
+        return False
 
-    print("Drawing material to Textured Render Target 2D")
+    else:
+      wTextureRenderTargetFactory = unreal.TextureRenderTargetFactoryNew()
+      wTexturedRenderTarget2D = asset_Tools.create_asset("RT_{}_{}".format(iAssetName, actor.get_name()), "{}/HeightMapRenderTagets".format(wIntermediateAssetPath), unreal.TextureRenderTarget2D, wTextureRenderTargetFactory)
+      wTexturedRenderTarget2D.set_editor_property("size_x", gUnrealResolution[iResolutionId])
+      wTexturedRenderTarget2D.set_editor_property("size_y", gUnrealResolution[iResolutionId])
+      wTexturedRenderTarget2D.set_editor_property("render_target_format", unreal.TextureRenderTargetFormat.RTF_RGBA16F)
+      wTexturedRenderTarget2D.set_editor_property("clear_color", [0.0,0.0,0.0,1.0])
 
-    render_lib.clear_render_target2d(wWorldContext, wTexturedRenderTarget2D, clear_color=[0.000000, 0.000000, 0.000000, 1.000000])
-    render_lib.draw_material_to_render_target(wWorldContext, wTexturedRenderTarget2D, wMaterial)
+      if None == wTexturedRenderTarget2D:
+        unreal.log_error("Was not able to generate Textured Render Target 2D")
+        return False
 
-    editor_asset.save_asset(wTexturedRenderTarget2D.get_path_name())
-    print("Complete Drawing material to Textured Render Target 2D")
+      unreal.log("Drawing material to Textured Render Target 2D")
+
+      render_lib.clear_render_target2d(wWorldContext, wTexturedRenderTarget2D, clear_color=[0.000000, 0.000000, 0.000000, 1.000000])
+
+      if True == gD_UseDebugMaterial:
+        wDebugMaterial = editor_asset.load_asset(gD_DebugMaterialPath)
+        if None == wDebugMaterial:
+          unreal.log_error("Unable to find Debug Material {}".format(gD_DebugMaterialPath))
+          return False
+        else:
+          render_lib.draw_material_to_render_target(wWorldContext, wTexturedRenderTarget2D, wDebugMaterial)        
+      else:
+        render_lib.draw_material_to_render_target(wWorldContext, wTexturedRenderTarget2D, wMaterial)
+
+      editor_asset.save_asset(wTexturedRenderTarget2D.get_path_name())
+      unreal.log("Complete Drawing material to Textured Render Target 2D")
 
     if True == actor.landscape_import_heightmap_from_render_target(wTexturedRenderTarget2D, import_height_from_rg_channel=True):
-      print("Import Terrain Heightmap Successful")
+      unreal.log("Import Terrain Heightmap Successful")
     else:
-      print("Import Terrain Heightmap NOT Successful")
+      unreal.log_error("Import Terrain Heightmap NOT Successful")
       return False
 
-  print("Break-------------")
-  print("Saving Level {}".format(iLevelPath))
+  unreal.log("Break-------------")
+  unreal.log("Saving Level {}".format(iLevelPath))
   editor_level.save_current_level()
   return True
 
@@ -355,8 +234,8 @@ def generateProjectLevelForTile(iHeightmapTilePath, iDestinationPath, iResolutio
   wNewLevelPath = iDestinationPath + "/L_{}".format(wImageName)
 
   if False == createLevel(wNewLevelPath, wTemplateLevelPath):
-    print("Unable to create Level for Image : {}".format(iHeightmapTilePath))
-    print("Exiting Task")
+    unreal.log_error("Unable to create Level for Image : {}".format(iHeightmapTilePath))
+    unreal.log_error("Exiting Task")
     return
 
   return loadHeightmapIntoLevel(iHeightmapTilePath, wNewLevelPath, wImageName, iResolutionId)
@@ -371,11 +250,20 @@ def generateProjectLevelsFromHeightmap(iHeightmapTileDirectory, iDestinationPath
         if wCurFile.endswith('.png'): 
             wListOfTiles.append(os.path.join(wDirpath, wCurFile))
 
-  for wTilePath in wListOfTiles:
-    if False == generateProjectLevelForTile(wTilePath, iDestinationPath, iResolutionId):
-      print("Error loading heightmap into level for Tile {}".format(wTilePath))
-      print("Exiting Batch Task")
-      return False
+  wNumberOfTiles = len(wListOfTiles)
+  wText_label = "Importing Tiles"
+  with unreal.ScopedSlowTask(wNumberOfTiles, wText_label) as slow_task:
+    slow_task.make_dialog(True) 
+    for wi in range(wNumberOfTiles):
+      if slow_task.should_cancel():
+        break
+      wTilePath = wListOfTiles[wi]
+      slow_task.enter_progress_frame(1, desc="Processing File : {}".format(wTilePath)) 
+      if False == generateProjectLevelForTile(wTilePath, iDestinationPath, iResolutionId):
+        unreal.log_error("Error loading heightmap into level for Tile {}".format(wTilePath))
+        unreal.log_error("Exiting Batch Task")
+        return False
+
 
   if True == gDeleteIntermediateFiles:
     deleteDirectory(gIntermediateFolder_path)
@@ -390,38 +278,38 @@ def main():
   wNotEnoughArguments = False
 
   if wRequiredArgumentCount + 1 > wNumberOfArguments:
-    print("Insufficient Argument Count. Expected {}, received {}".format(wRequiredArgumentCount, wNumberOfArguments - 1))
+    unreal.log_error("Insufficient Argument Count. Expected {}, received {}".format(wRequiredArgumentCount, wNumberOfArguments - 1))
     wNotEnoughArguments = True
 
   if wNotEnoughArguments:
-    print("Purpose")
-    print("  This script will create a new level (.umap) for every heightmap tile from the given directory.")
-    print("Usuage :")
-    print("  argument 1 : Heightmap Tile Directory (path)")
-    print("  argument 2 : Tile Resolution Id (int)")
-    print("Supported Id's are :")
+    unreal.log("Purpose")
+    unreal.log("  This script will create a new level (.umap) for every heightmap tile from the given directory.")
+    unreal.log("Usuage :")
+    unreal.log("  argument 1 : Heightmap Tile Directory (path)")
+    unreal.log("  argument 2 : Tile Resolution Id (int)")
+    unreal.log("Supported Id's are :")
     for wi in range(0, len(gUnrealResolution)):
-      print("  {} for {} x {}".format(wi, gUnrealResolution[wi], gUnrealResolution[wi]))
+      unreal.log("  {} for {} x {}".format(wi, gUnrealResolution[wi], gUnrealResolution[wi]))
     return
 
   iHeightMapTileDiretory = sys.argv[1]    
 
   if False == os.path.exists(iHeightMapTileDiretory):
-    print("Error : Unable to find file [{}]".format(iHeightMapTileDiretory))
+    unreal.log("Error : Unable to find file [{}]".format(iHeightMapTileDiretory))
     return
 
   wResolutionId = int(sys.argv[2])
 
   if len(gUnrealResolution) < wResolutionId:
-    print("Error : Resolution Id not supported")
-    print("Supported Id's are :")
+    unreal.log("Error : Resolution Id not supported")
+    unreal.log("Supported Id's are :")
     for wi in range(0, len(gUnrealResolution)):
-      print("  {} for {} x {}".format(wi, gUnrealResolution[wi], gUnrealResolution[wi]))
+      unreal.log("  {} for {} x {}".format(wi, gUnrealResolution[wi], gUnrealResolution[wi]))
     return
 
   generateProjectLevelsFromHeightmap(iHeightMapTileDiretory, gOutputFolder_path, wResolutionId)
   
-  print("Loading World Level")
+  unreal.log("Loading World Level")
   wWorldContext = loadLevel("/Game/Map/WorldMap")
   
   return 
@@ -435,7 +323,7 @@ if __name__ == "__main__":
 
   wCount = 0
   for wArg in sys.argv:
-    print("arg {} : {}".format(wCount, wArg))
+    unreal.log("arg {} : {}".format(wCount, wArg))
     wCount = wCount + 1
 
   main()
