@@ -19,9 +19,13 @@ import shutil
 
 gUnrealResolution = [127,253,505,1009,2017,4033,8129]
 
+
 gDeleteIntermediateFiles = False
 gIntermediateFolder_path = "/Game/Intermediate"
 gOutputFolder_path = "/Game/Map/Sections"
+
+gD_DebugTexture2dPath = "/Game/DebugTools/D_T_TestTexture"
+gD_UseDebugTexture2d = True
 
 gD_DebugMaterialPath = "/Game/DebugTools/D_M_TestMaterial"
 gD_UseDebugMaterial = False
@@ -93,6 +97,70 @@ def deleteAsset(iAssetPath):
   else:
     unreal.log_error("Deleting Not successful [{}]".format(iAssetPath))
 
+def drawTexture2DToTexturedRenderTarget2D(iWorldContext, iTexture2dPath, iTexturedRenderTarget2DPath, iAssetName, iIntermediateAssetPath):
+
+  unreal.log("Break-------------")
+  unreal.log("Drawing Texture2d [{}] to TextureRenderTarget2D [{}]".format(iTexture2dPath, iTexturedRenderTarget2DPath ))
+
+  # Instances of Unreal classes
+  editor_asset = unreal.EditorAssetLibrary()
+  asset_Tools = unreal.AssetToolsHelpers.get_asset_tools()
+  render_lib = unreal.RenderingLibrary()
+  material_Edit_lib = unreal.MaterialEditingLibrary()
+  editor_level = unreal.EditorLevelLibrary()
+
+  wTexture2D = editor_asset.load_asset(iTexture2dPath)
+  if None == wTexture2D:
+    unreal.log_error("Unable to find Debug Render Target 2D {}".format(iTexture2dPath))
+    return False
+
+  wRenderTarget2D = editor_asset.load_asset(iTexturedRenderTarget2DPath)
+  if None == wRenderTarget2D:
+    unreal.log_error("Unable to find Debug Render Target 2D {}".format(iTexturedRenderTarget2DPath))
+    return False
+
+  unreal.log("Break-------------")
+
+  # Create a material.
+  wMaterial = None
+  if True == gD_UseDebugMaterial:
+    unreal.log("Using Debug material")
+    wDebugMaterial = editor_asset.load_asset(gD_DebugMaterialPath)
+    if None == wDebugMaterial:
+      unreal.log_error("Unable to find Debug Material {}".format(gD_DebugMaterialPath))
+      return False
+  else:
+    unreal.log("Building Render Target Material")
+
+    wMaterialFactory = unreal.MaterialFactoryNew()
+    wMaterial = asset_Tools.create_asset("M_{}".format(iAssetName), "{}/LandscapeBrush".format(iIntermediateAssetPath), unreal.Material, wMaterialFactory)
+
+#    wMaterial.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ALPHA_COMPOSITE)
+    wMaterial.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
+    wMaterial.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    wMaterial.set_editor_property("allow_negative_emissive_color", True)
+
+    wTextureSampleNode = material_Edit_lib.create_material_expression(wMaterial, unreal.MaterialExpressionTextureSample, -384,0)
+    material_Edit_lib.connect_material_property(wTextureSampleNode, "RGB", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    wTextureSampleNode.texture = wTexture2D
+    #wTextureSampleNode.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
+    wTextureSampleNode.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+  
+    wConstantNode = material_Edit_lib.create_material_expression(wMaterial, unreal.MaterialExpressionConstant, -384,300)
+    wConstantNode.set_editor_property('R', 1.0)
+    material_Edit_lib.connect_material_property(wConstantNode, "", unreal.MaterialProperty.MP_OPACITY)
+
+    unreal.log("Saving Material")
+  #  editor_asset.save_asset(wMaterial.get_path_name())
+    editor_asset.save_directory(iIntermediateAssetPath)
+
+
+  render_lib.clear_render_target2d(iWorldContext, wRenderTarget2D, clear_color=[0.000000, 0.000000, 0.000000, 1.000000])
+  render_lib.draw_material_to_render_target(iWorldContext, wRenderTarget2D, wMaterial)
+
+  editor_asset.save_asset(iTexturedRenderTarget2DPath)
+  return True
+
 
 def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResolutionId):
 
@@ -117,43 +185,73 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
 
   unreal.log("Break-------------")
 
-  unreal.log("Importing Heightmap Tile as Texture : {}")
-  # Importing Heightmap Textures
-  wData = unreal.AutomatedAssetImportData()
-  wData.set_editor_property('destination_path', "{}/Texture2d".format(wIntermediateAssetPath))
-  wData.set_editor_property('filenames', [iHeightmapTilePath])
-  wList_HeightMaptexture2D = asset_Tools.import_assets_automated(wData)
+  wTexture2D = None
 
-  if 0 == len(wList_HeightMaptexture2D):
-    unreal.log_error("Error Importing Heightmap")
-    return False
+  if True == gD_UseDebugTexture2d:
+    wTexture2D = editor_asset.load_asset(gD_DebugTexture2dPath)
+    if None == wTexture2D:
+      unreal.log_error("Unable to find Debug Texture 2D {}".format(gD_DebugTexture2dPath))
+      return False
 
-  unreal.log("Saving Texture2D")
-  editor_asset.save_asset(wList_HeightMaptexture2D[0].get_path_name())
+  else:
+    unreal.log("Importing Heightmap Tile as Texture : {}".format(iHeightmapTilePath))
+    # Importing Heightmap Textures
+    wData = unreal.AutomatedAssetImportData()
+    wData.set_editor_property('destination_path', "{}/Texture2d".format(wIntermediateAssetPath))
+    wData.set_editor_property('filenames', [iHeightmapTilePath])
+    wList_HeightMaptexture2D = asset_Tools.import_assets_automated(wData)
+
+    if 0 == len(wList_HeightMaptexture2D):
+      unreal.log_error("Error Importing Heightmap")
+      return False
+
+    wTexture2D = wList_HeightMaptexture2D[0]
+
+    unreal.log("Saving Texture2D")
+    editor_asset.save_asset(wTexture2D.get_path_name())
 
   unreal.log("Break-------------")
 
-  # Create a material.
-  unreal.log("Building Render Target Material")
+  unreal.log("Creating Textured Render Target 2D")
 
-  wMaterialFactory = unreal.MaterialFactoryNew()
-  wMaterial = asset_Tools.create_asset("M_{}".format(iAssetName), "{}/LandscapeBrush".format(wIntermediateAssetPath), unreal.Material, wMaterialFactory)
+  wTexturedRenderTarget2D = None
 
-  wMaterial.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ALPHA_COMPOSITE)
-  wMaterial.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+  if True == gD_UseDebugRenderTarget:
+    wTexturedRenderTarget2D = editor_asset.load_asset(gD_DebugRenderTargetPath)
+    if None == wTexturedRenderTarget2D:
+      unreal.log_error("Unable to find Debug Texture Render Target 2D {}".format(gD_DebugRenderTargetPath))
+      return False
 
-  wTextureSampleNode = material_Edit_lib.create_material_expression(wMaterial, unreal.MaterialExpressionTextureSample, -384,0)
-  material_Edit_lib.connect_material_property(wTextureSampleNode, "RGB", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
-  wTextureSampleNode.texture = wList_HeightMaptexture2D[0]
-  #wTextureSampleNode.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
-  wTextureSampleNode.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+  #  render_lib.clear_render_target2d(wWorldContext, wTexturedRenderTarget2D, clear_color=[0.000000, 0.000000, 0.000000, 1.000000])
+  #  render_lib.draw_material_to_render_target(wWorldContext, wTexturedRenderTarget2D, wMaterial)
+  else:
+    wTextureRenderTargetFactory = unreal.TextureRenderTargetFactoryNew()
+    wTexturedRenderTarget2D = asset_Tools.create_asset("RT_{}".format(iAssetName), "{}/HeightMapRenderTagets".format(wIntermediateAssetPath), unreal.TextureRenderTarget2D, wTextureRenderTargetFactory)
+    wTexturedRenderTarget2D.set_editor_property("size_x", gUnrealResolution[iResolutionId])
+    wTexturedRenderTarget2D.set_editor_property("size_y", gUnrealResolution[iResolutionId])
+    wTexturedRenderTarget2D.set_editor_property("render_target_format", unreal.TextureRenderTargetFormat.RTF_RGBA16F)
+    wTexturedRenderTarget2D.set_editor_property("clear_color", [0.0,0.0,0.0,1.0])
+
+    wTexturedRenderTarget2DPath = wTexturedRenderTarget2D.get_path_name()
+    editor_asset.save_asset(wTexturedRenderTarget2DPath)
+
+    if None == wTexturedRenderTarget2D:
+      unreal.log_error("Was not able to generate Textured Render Target 2D")
+      return False
+
+    unreal.log("Drawing material to Textured Render Target 2D")
+
+    if False == drawTexture2DToTexturedRenderTarget2D(
+      wWorldContext
+    , wTexture2D.get_path_name()
+    , wTexturedRenderTarget2DPath
+    , iAssetName
+    , wIntermediateAssetPath):
+    
+      unreal.log("Unable to Draw Textured 2D [{}] to TexturedRenderTarget2D [{}]".format(wTexture2D.get_path_name(), wTexturedRenderTarget2D.get_path_name()))
+      return False
   
-  wConstantNode = material_Edit_lib.create_material_expression(wMaterial, unreal.MaterialExpressionConstant, -384,300)
-  wConstantNode.set_editor_property('R', 1.0)
-  material_Edit_lib.connect_material_property(wConstantNode, "", unreal.MaterialProperty.MP_OPACITY)
-
-  unreal.log("Saving Material")
-  editor_asset.save_asset(wMaterial.get_path_name())
+    editor_asset.save_asset(wTexturedRenderTarget2DPath)
 
   unreal.log("Break-------------")
 
@@ -174,50 +272,16 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
 
     unreal.log(actor)
 
-    unreal.log("Creating Textured Render Target 2D")
-
-    wTexturedRenderTarget2D = None
-
-    if True == gD_UseDebugRenderTarget:
-      wTexturedRenderTarget2D = editor_asset.load_asset(gD_DebugRenderTargetPath)
-      if None == wTexturedRenderTarget2D:
-        unreal.log_error("Unable to find Debug Render Target 2D {}".format(gD_DebugRenderTargetPath))
-        return False
-
-    else:
-      wTextureRenderTargetFactory = unreal.TextureRenderTargetFactoryNew()
-      wTexturedRenderTarget2D = asset_Tools.create_asset("RT_{}_{}".format(iAssetName, actor.get_name()), "{}/HeightMapRenderTagets".format(wIntermediateAssetPath), unreal.TextureRenderTarget2D, wTextureRenderTargetFactory)
-      wTexturedRenderTarget2D.set_editor_property("size_x", gUnrealResolution[iResolutionId])
-      wTexturedRenderTarget2D.set_editor_property("size_y", gUnrealResolution[iResolutionId])
-      wTexturedRenderTarget2D.set_editor_property("render_target_format", unreal.TextureRenderTargetFormat.RTF_RGBA16F)
-      wTexturedRenderTarget2D.set_editor_property("clear_color", [0.0,0.0,0.0,1.0])
-
-      if None == wTexturedRenderTarget2D:
-        unreal.log_error("Was not able to generate Textured Render Target 2D")
-        return False
-
-      unreal.log("Drawing material to Textured Render Target 2D")
-
-      render_lib.clear_render_target2d(wWorldContext, wTexturedRenderTarget2D, clear_color=[0.000000, 0.000000, 0.000000, 1.000000])
-
-      if True == gD_UseDebugMaterial:
-        wDebugMaterial = editor_asset.load_asset(gD_DebugMaterialPath)
-        if None == wDebugMaterial:
-          unreal.log_error("Unable to find Debug Material {}".format(gD_DebugMaterialPath))
-          return False
-        else:
-          render_lib.draw_material_to_render_target(wWorldContext, wTexturedRenderTarget2D, wDebugMaterial)        
-      else:
-        render_lib.draw_material_to_render_target(wWorldContext, wTexturedRenderTarget2D, wMaterial)
-
-      editor_asset.save_asset(wTexturedRenderTarget2D.get_path_name())
-      unreal.log("Complete Drawing material to Textured Render Target 2D")
-
     if True == actor.landscape_import_heightmap_from_render_target(wTexturedRenderTarget2D, import_height_from_rg_channel=True):
       unreal.log("Import Terrain Heightmap Successful")
     else:
       unreal.log_error("Import Terrain Heightmap NOT Successful")
       return False
+
+  unreal.log("Break-------------")
+
+  unreal.log("Saving Intermediate Folder")
+  editor_asset.save_directory(wIntermediateAssetPath)
 
   unreal.log("Break-------------")
   unreal.log("Saving Level {}".format(iLevelPath))
@@ -243,6 +307,7 @@ def generateProjectLevelForTile(iHeightmapTilePath, iDestinationPath, iResolutio
 
 def generateProjectLevelsFromHeightmap(iHeightmapTileDirectory, iDestinationPath, iResolutionId):
   deleteDirectory(gIntermediateFolder_path)
+  deleteDirectory(iDestinationPath)
 
   wListOfTiles = []
   for (wDirpath, wDirnames, wFilenames) in os.walk(iHeightmapTileDirectory):
@@ -258,7 +323,7 @@ def generateProjectLevelsFromHeightmap(iHeightmapTileDirectory, iDestinationPath
       if slow_task.should_cancel():
         break
       wTilePath = wListOfTiles[wi]
-      slow_task.enter_progress_frame(1, desc="Processing File : {}".format(wTilePath)) 
+      slow_task.enter_progress_frame(1, desc="Processing File : {}".format(wTilePath.replace("/", "\\"))) 
       if False == generateProjectLevelForTile(wTilePath, iDestinationPath, iResolutionId):
         unreal.log_error("Error loading heightmap into level for Tile {}".format(wTilePath))
         unreal.log_error("Exiting Batch Task")
@@ -306,6 +371,9 @@ def main():
     for wi in range(0, len(gUnrealResolution)):
       unreal.log("  {} for {} x {}".format(wi, gUnrealResolution[wi], gUnrealResolution[wi]))
     return
+
+  unreal.log("Loading World Level")
+  wWorldContext = loadLevel("/Game/Map/WorldMap")
 
   generateProjectLevelsFromHeightmap(iHeightMapTileDiretory, gOutputFolder_path, wResolutionId)
   
