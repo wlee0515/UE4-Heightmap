@@ -134,6 +134,42 @@ def drawTexture2DToTexturedRenderTarget2D(iWorldContext, iTexture2dPath, iTextur
   return True
 
 
+def drawImageFileToTexturedRenderTarget2D(iWorldContext, iImageFilePath, iTexturedRenderTarget2DPath, iAssetName, iIntermediateAssetPath):
+
+  unreal.log("Break-------------")
+  unreal.log("Drawing Texture2d [{}] to TextureRenderTarget2D [{}]".format(iTexture2dPath, iTexturedRenderTarget2DPath ))
+
+  # Instances of Unreal classes
+  editor_asset = unreal.EditorAssetLibrary()
+  render_lib = unreal.RenderingLibrary()
+  material_Edit_lib = unreal.MaterialEditingLibrary()
+  editor_level = unreal.EditorLevelLibrary()
+
+  wRenderTarget2D = editor_asset.load_asset(iTexturedRenderTarget2DPath)
+  if None == wRenderTarget2D:
+    unreal.log_error("Unable to find Debug Render Target 2D {}".format(iTexturedRenderTarget2DPath))
+    return False
+
+  wTexture2D = render_lib.import_file_as_texture2d(iWorldContext, iImageFilePath)
+  if None == wTexture2D:
+    unreal.log_error("Unable to Image To Texture 2D {}".format(iImageFilePath))
+    return False
+
+
+  unreal.log("Break-------------")
+
+  render_lib.clear_render_target2d(iWorldContext, wRenderTarget2D, clear_color=[0.000000, 0.000000, 0.000000, 1.000000])
+
+  wCanvas, wSize, wDrawContext = render_lib.begin_draw_canvas_to_render_target(iWorldContext, wRenderTarget2D)
+
+  wCanvas.draw_texture(wTexture2D,screen_position=[0.0,0.0], screen_size=wSize, coordinate_position=[0.0,0.0], coordinate_size=[1.0,1.0], render_color=[1.0,1.0,1.0,1.0], blend_mode=unreal.BlendMode.BLEND_OPAQUE )
+
+  render_lib.end_draw_canvas_to_render_target(iWorldContext, wDrawContext)
+
+  editor_asset.save_asset(iTexturedRenderTarget2DPath)
+  return True
+
+
 # Not working, uses a material to draw texture2D on Texture Render Target 2D
 def ___drawTexture2DToTexturedRenderTarget2D(iWorldContext, iTexture2dPath, iTexturedRenderTarget2DPath, iAssetName, iIntermediateAssetPath):
 
@@ -149,12 +185,12 @@ def ___drawTexture2DToTexturedRenderTarget2D(iWorldContext, iTexture2dPath, iTex
 
   wTexture2D = editor_asset.load_asset(iTexture2dPath)
   if None == wTexture2D:
-    unreal.log_error("Unable to find Debug Render Target 2D {}".format(iTexture2dPath))
+    unreal.log_error("Unable to find Texture2D {}".format(iTexture2dPath))
     return False
 
   wRenderTarget2D = editor_asset.load_asset(iTexturedRenderTarget2DPath)
   if None == wRenderTarget2D:
-    unreal.log_error("Unable to find Debug Render Target 2D {}".format(iTexturedRenderTarget2DPath))
+    unreal.log_error("Unable to find Texture Render Target 2D {}".format(iTexturedRenderTarget2DPath))
     return False
 
   unreal.log("Break-------------")
@@ -244,6 +280,11 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
       return False
 
     wTexture2D = wList_HeightMaptexture2D[0]
+    wTexture2D.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_TERRAIN_HEIGHTMAP)
+    wTexture2D.set_editor_property("compression_no_alpha", True)
+    wTexture2D.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_HALF_FLOAT)
+    wTexture2D.set_editor_property("compression_quality", unreal.TextureCompressionQuality.TCQ_HIGHEST)
+    wTexture2D.set_editor_property("defer_compression", True)
 
     unreal.log("Saving Texture2D")
     editor_asset.save_asset(wTexture2D.get_path_name())
@@ -261,11 +302,12 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
       return False
 
   else:
-    wTextureRenderTargetFactory = unreal.TextureRenderTargetFactoryNew()
-    wTexturedRenderTarget2D = asset_Tools.create_asset("RT_{}".format(iAssetName), "{}/HeightMapRenderTagets".format(wIntermediateAssetPath), unreal.TextureRenderTarget2D, wTextureRenderTargetFactory)
+    wTextureRenderTargetFactory = unreal.CanvasRenderTarget2DFactoryNew()
+    wTexturedRenderTarget2D = asset_Tools.create_asset("RT_{}".format(iAssetName), "{}/HeightMapRenderTagets".format(wIntermediateAssetPath), unreal.CanvasRenderTarget2D, wTextureRenderTargetFactory)
     wTexturedRenderTarget2D.set_editor_property("size_x", gUnrealResolution[iResolutionId])
     wTexturedRenderTarget2D.set_editor_property("size_y", gUnrealResolution[iResolutionId])
     wTexturedRenderTarget2D.set_editor_property("render_target_format", unreal.TextureRenderTargetFormat.RTF_RGBA16F)
+    wTexturedRenderTarget2D.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_TERRAIN_HEIGHTMAP)
     wTexturedRenderTarget2D.set_editor_property("clear_color", [0.0,0.0,0.0,1.0])
 
     wTexturedRenderTarget2DPath = wTexturedRenderTarget2D.get_path_name()
