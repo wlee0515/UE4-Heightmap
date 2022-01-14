@@ -25,7 +25,7 @@ gIntermediateFolder_path = "/Game/Intermediate"
 gOutputFolder_path = "/Game/Map/Sections"
 
 gD_DebugTexture2dPath = "/Game/DebugTools/D_T_TestTexture"
-gD_UseDebugTexture2d = True
+gD_UseDebugTexture2d = False
 
 gD_DebugMaterialPath = "/Game/DebugTools/D_M_TestMaterial"
 gD_UseDebugMaterial = False
@@ -97,7 +97,45 @@ def deleteAsset(iAssetPath):
   else:
     unreal.log_error("Deleting Not successful [{}]".format(iAssetPath))
 
+
 def drawTexture2DToTexturedRenderTarget2D(iWorldContext, iTexture2dPath, iTexturedRenderTarget2DPath, iAssetName, iIntermediateAssetPath):
+
+  unreal.log("Break-------------")
+  unreal.log("Drawing Texture2d [{}] to TextureRenderTarget2D [{}]".format(iTexture2dPath, iTexturedRenderTarget2DPath ))
+
+  # Instances of Unreal classes
+  editor_asset = unreal.EditorAssetLibrary()
+  asset_Tools = unreal.AssetToolsHelpers.get_asset_tools()
+  render_lib = unreal.RenderingLibrary()
+  material_Edit_lib = unreal.MaterialEditingLibrary()
+  editor_level = unreal.EditorLevelLibrary()
+
+  wTexture2D = editor_asset.load_asset(iTexture2dPath)
+  if None == wTexture2D:
+    unreal.log_error("Unable to find Debug Render Target 2D {}".format(iTexture2dPath))
+    return False
+
+  wRenderTarget2D = editor_asset.load_asset(iTexturedRenderTarget2DPath)
+  if None == wRenderTarget2D:
+    unreal.log_error("Unable to find Debug Render Target 2D {}".format(iTexturedRenderTarget2DPath))
+    return False
+
+  unreal.log("Break-------------")
+
+  render_lib.clear_render_target2d(iWorldContext, wRenderTarget2D, clear_color=[0.000000, 0.000000, 0.000000, 1.000000])
+
+  wCanvas, wSize, wDrawContext = render_lib.begin_draw_canvas_to_render_target(iWorldContext, wRenderTarget2D)
+
+  wCanvas.draw_texture(wTexture2D,screen_position=[0.0,0.0], screen_size=wSize, coordinate_position=[0.0,0.0], coordinate_size=[1.0,1.0], render_color=[1.0,1.0,1.0,1.0], blend_mode=unreal.BlendMode.BLEND_OPAQUE )
+
+  render_lib.end_draw_canvas_to_render_target(iWorldContext, wDrawContext)
+
+  editor_asset.save_asset(iTexturedRenderTarget2DPath)
+  return True
+
+
+# Not working, uses a material to draw texture2D on Texture Render Target 2D
+def ___drawTexture2DToTexturedRenderTarget2D(iWorldContext, iTexture2dPath, iTexturedRenderTarget2DPath, iAssetName, iIntermediateAssetPath):
 
   unreal.log("Break-------------")
   unreal.log("Drawing Texture2d [{}] to TextureRenderTarget2D [{}]".format(iTexture2dPath, iTexturedRenderTarget2DPath ))
@@ -222,8 +260,6 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
       unreal.log_error("Unable to find Debug Texture Render Target 2D {}".format(gD_DebugRenderTargetPath))
       return False
 
-  #  render_lib.clear_render_target2d(wWorldContext, wTexturedRenderTarget2D, clear_color=[0.000000, 0.000000, 0.000000, 1.000000])
-  #  render_lib.draw_material_to_render_target(wWorldContext, wTexturedRenderTarget2D, wMaterial)
   else:
     wTextureRenderTargetFactory = unreal.TextureRenderTargetFactoryNew()
     wTexturedRenderTarget2D = asset_Tools.create_asset("RT_{}".format(iAssetName), "{}/HeightMapRenderTagets".format(wIntermediateAssetPath), unreal.TextureRenderTarget2D, wTextureRenderTargetFactory)
@@ -313,17 +349,28 @@ def generateProjectLevelsFromHeightmap(iHeightmapTileDirectory, iDestinationPath
   for (wDirpath, wDirnames, wFilenames) in os.walk(iHeightmapTileDirectory):
     for wCurFile in wFilenames:
         if wCurFile.endswith('.png'): 
-            wListOfTiles.append(os.path.join(wDirpath, wCurFile))
+            wListOfTiles.append([os.path.join(wDirpath, wCurFile), wCurFile])
+
+  wHeighDirMapPath = iHeightmapTileDirectory.replace("\\", "/")
+  if "/" != wHeighDirMapPath[-1]:
+    wHeighDirMapPath = wHeighDirMapPath + "/"
 
   wNumberOfTiles = len(wListOfTiles)
   wText_label = "Importing Tiles"
   with unreal.ScopedSlowTask(wNumberOfTiles, wText_label) as slow_task:
     slow_task.make_dialog(True) 
+
     for wi in range(wNumberOfTiles):
+
       if slow_task.should_cancel():
         break
-      wTilePath = wListOfTiles[wi]
-      slow_task.enter_progress_frame(1, desc="Processing File : {}".format(wTilePath.replace("/", "\\"))) 
+
+      wTilePath = wListOfTiles[wi][0]
+      wTileFilename = wListOfTiles[wi][1]
+      wTileRelativePath = wTilePath.replace("\\", "/").replace(wHeighDirMapPath, "./")
+
+      slow_task.enter_progress_frame(1, desc="Processing File : {}".format(wTileRelativePath.replace("/", "\\"))) 
+
       if False == generateProjectLevelForTile(wTilePath, iDestinationPath, iResolutionId):
         unreal.log_error("Error loading heightmap into level for Tile {}".format(wTilePath))
         unreal.log_error("Exiting Batch Task")
@@ -377,9 +424,10 @@ def main():
 
   generateProjectLevelsFromHeightmap(iHeightMapTileDiretory, gOutputFolder_path, wResolutionId)
   
-  unreal.log("Loading World Level")
+  unreal.log("Updating Level [WorldMap]")
   wWorldContext = loadLevel("/Game/Map/WorldMap")
-  
+  unreal.EditorLevelLibrary().save_current_level()
+
   return 
 
   
