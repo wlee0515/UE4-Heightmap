@@ -16,7 +16,6 @@ import sys
 import os
 import time
 import shutil
-
 gUnrealResolution = [127,253,505,1009,2017,4033,8129]
 
 
@@ -270,16 +269,22 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
   else:
     unreal.log("Importing Heightmap Tile as Texture : {}".format(iHeightmapTilePath))
     # Importing Heightmap Textures
-    wData = unreal.AutomatedAssetImportData()
-    wData.set_editor_property('destination_path', "{}/Texture2d".format(wIntermediateAssetPath))
-    wData.set_editor_property('filenames', [iHeightmapTilePath])
-    wList_HeightMaptexture2D = asset_Tools.import_assets_automated(wData)
 
-    if 0 == len(wList_HeightMaptexture2D):
-      unreal.log_error("Error Importing Heightmap")
+    wTexture_destinationPath = "{}/Texture2d".format(wIntermediateAssetPath)
+    wTexture_destinationName = "T_{}".format(iAssetName)
+    wTexture_FullName = "{}/{}".format(wTexture_destinationPath, wTexture_destinationName)
+    
+    wImportTask = unreal.AssetImportTask()
+    wImportTask.set_editor_property('destination_path', wTexture_destinationPath)
+    wImportTask.set_editor_property('destination_name', wTexture_destinationName)
+    wImportTask.set_editor_property('filename', iHeightmapTilePath)
+    asset_Tools.import_asset_tasks([wImportTask])
+
+    wTexture2D = editor_asset.load_asset(wTexture_FullName)
+    if 0 == wTexture2D:
+      unreal.log_error("Error Importing Heightmap : {}".format(wTexture_FullName) )
       return False
 
-    wTexture2D = wList_HeightMaptexture2D[0]
     wTexture2D.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_TERRAIN_HEIGHTMAP)
     wTexture2D.set_editor_property("compression_no_alpha", True)
     wTexture2D.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_HALF_FLOAT)
@@ -319,7 +324,7 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
 
     unreal.log("Drawing material to Textured Render Target 2D")
 
-    if False == drawTexture2DToTexturedRenderTarget2D(
+    if False == ___drawTexture2DToTexturedRenderTarget2D(
       wWorldContext
     , wTexture2D.get_path_name()
     , wTexturedRenderTarget2DPath
@@ -367,20 +372,22 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
   return True
 
 
-def generateProjectLevelForTile(iHeightmapTilePath, iDestinationPath, iResolutionId):
+def generateProjectLevelForTile(iHeightmapTilePath, iDestinationPath, iResolutionId, iAssetName = None):
 
-  wImageName = os.path.splitext(os.path.basename(iHeightmapTilePath))[0]
-  wImageName = wImageName.replace(" ", "_")
+  if None == iAssetName:
+    wImageName = os.path.splitext(os.path.basename(iHeightmapTilePath))[0]
+    wImageName = wImageName.replace(" ", "_")
+    iAssetName = wImageName
 
   wTemplateLevelPath = "/Game/Template/L_Template_{}".format(gUnrealResolution[iResolutionId])
-  wNewLevelPath = iDestinationPath + "/L_{}".format(wImageName)
+  wNewLevelPath = iDestinationPath + "/L_{}".format(iAssetName)
 
   if False == createLevel(wNewLevelPath, wTemplateLevelPath):
     unreal.log_error("Unable to create Level for Image : {}".format(iHeightmapTilePath))
     unreal.log_error("Exiting Task")
     return
 
-  return loadHeightmapIntoLevel(iHeightmapTilePath, wNewLevelPath, wImageName, iResolutionId)
+  return loadHeightmapIntoLevel(iHeightmapTilePath, wNewLevelPath, iAssetName, iResolutionId)
 
 
 def generateProjectLevelsFromHeightmap(iHeightmapTileDirectory, iDestinationPath, iResolutionId):
@@ -413,7 +420,11 @@ def generateProjectLevelsFromHeightmap(iHeightmapTileDirectory, iDestinationPath
 
       slow_task.enter_progress_frame(1, desc="Processing File : {}".format(wTileRelativePath.replace("/", "\\"))) 
 
-      if False == generateProjectLevelForTile(wTilePath, iDestinationPath, iResolutionId):
+      
+      wImageName = os.path.splitext(wTileFilename)[0]
+      wImageName = wImageName.replace(" ", "_")
+
+      if False == generateProjectLevelForTile(wTilePath, iDestinationPath, iResolutionId, wImageName):
         unreal.log_error("Error loading heightmap into level for Tile {}".format(wTilePath))
         unreal.log_error("Exiting Batch Task")
         return False
