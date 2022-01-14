@@ -16,7 +16,7 @@
 import sys, os, shutil, subprocess
 import pathlib
 
-gLaunchUnrealEditor = False
+gLaunchUnrealEditor = True
 gUnrealResolution = [127,253,505,1009,2017,4033,8129]
 
 gRepositoryFolder = pathlib.Path(__file__).parent.resolve()
