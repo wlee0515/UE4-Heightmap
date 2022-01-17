@@ -151,7 +151,7 @@ def drawImageFileToTexturedRenderTarget2D(iWorldContext, iImageFilePath, iTextur
 
   wTexture2D = render_lib.import_file_as_texture2d(iWorldContext, iImageFilePath)
   if None == wTexture2D:
-    unreal.log_error("Unable to Image To Texture 2D {}".format(iImageFilePath))
+    unreal.log_error("Unable to import Image To Texture 2D {}".format(iImageFilePath))
     return False
 
 
@@ -286,10 +286,6 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
       return False
 
     wTexture2D.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_TERRAIN_HEIGHTMAP)
-    wTexture2D.set_editor_property("compression_no_alpha", True)
-    wTexture2D.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_HALF_FLOAT)
-    wTexture2D.set_editor_property("compression_quality", unreal.TextureCompressionQuality.TCQ_HIGHEST)
-    wTexture2D.set_editor_property("defer_compression", True)
 
     unreal.log("Saving Texture2D")
     editor_asset.save_asset(wTexture2D.get_path_name())
@@ -311,7 +307,7 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
     wTexturedRenderTarget2D = asset_Tools.create_asset("RT_{}".format(iAssetName), "{}/HeightMapRenderTagets".format(wIntermediateAssetPath), unreal.CanvasRenderTarget2D, wTextureRenderTargetFactory)
     wTexturedRenderTarget2D.set_editor_property("size_x", gUnrealResolution[iResolutionId])
     wTexturedRenderTarget2D.set_editor_property("size_y", gUnrealResolution[iResolutionId])
-    wTexturedRenderTarget2D.set_editor_property("render_target_format", unreal.TextureRenderTargetFormat.RTF_RGBA16F)
+    wTexturedRenderTarget2D.set_editor_property("render_target_format", unreal.TextureRenderTargetFormat.RTF_RGBA8)
     wTexturedRenderTarget2D.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_TERRAIN_HEIGHTMAP)
     wTexturedRenderTarget2D.set_editor_property("clear_color", [0.0,0.0,0.0,1.0])
 
@@ -324,7 +320,7 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
 
     unreal.log("Drawing material to Textured Render Target 2D")
 
-    if False == ___drawTexture2DToTexturedRenderTarget2D(
+    if False == drawTexture2DToTexturedRenderTarget2D(
       wWorldContext
     , wTexture2D.get_path_name()
     , wTexturedRenderTarget2DPath
