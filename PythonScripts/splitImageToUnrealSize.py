@@ -37,22 +37,12 @@ def splitImage(iImagePath, iOutputFolder, iWidth, iHeight, iSkipIncompleteTiles)
   wOriginal = Image.open(iImagePath)
   #wOriginal.show()
 
-
   wImageWidth, wImageHeight = wOriginal.size   # Get dimensions
 
-  wYMax = 0
-  for wj in range(0, wImageHeight, iHeight):
-    wBottom = wj + iHeight
-    if wBottom > wImageHeight:
-      if True == iSkipIncompleteTiles:
-        break
-    wYMax = wYMax + 1
-  wYMax = wYMax - 1
-
   wXCount = 0
-  for wi in range(0, wImageWidth, iWidth):
-    wYCount = wYMax
-    for wj in range(0, wImageHeight, iHeight):
+  for wi in range(0, wImageWidth, iWidth-1):
+    wYCount = 0
+    for wj in range(0, wImageHeight, iHeight-1):
       wLeft = wi
       wRight = wi + iWidth
       if wRight > wImageWidth:
@@ -74,7 +64,7 @@ def splitImage(iImagePath, iOutputFolder, iWidth, iHeight, iSkipIncompleteTiles)
       wOutputFilePath = os.path.join(wOutputFolderPath,wOutputFileName)
       wSubSection.save(wOutputFilePath)
     
-      wYCount = wYCount - 1
+      wYCount = wYCount + 1
     wXCount = wXCount + 1
 
 
