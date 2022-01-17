@@ -60,12 +60,21 @@ def createHeightmapProject(iHeightmapFilePath, iDestinationFolder, iNewProjectNa
   wProjectPath = os.path.join(iDestinationFolder, "{}/{}.uproject".format(iNewProjectName, iNewProjectName))
   wProjectPath = os.path.abspath(wProjectPath)
 
+  # Create RGB_Heightmap Tiles
+  wRGB_HeightMapTileFolder = os.path.join(iDestinationFolder, "RGB_HeightmapTiles")
+  wConvertImageToRGB = os.path.join(gPythonScriptsFolder, "convertImageG16ToRGB8.py")
+  wProcess_ConvertImage = subprocess.run([gPythonExe,  wConvertImageToRGB, wHeightMapTileFolder, wRGB_HeightMapTileFolder])
+
+  wProjectPath = os.path.join(iDestinationFolder, "{}/{}.uproject".format(iNewProjectName, iNewProjectName))
+  wProjectPath = os.path.abspath(wProjectPath)
+
+
   # Execute Unreal Python Script
   if True == gLaunchUnrealEditor:
     wProcess_UnrealPython = subprocess.run([
       gUnrealEditorCmdExe
     , wProjectPath
-    , "-ExecutePythonScript={} {} {}".format(gUnrealPyScript, wHeightMapTileFolder, "{}".format(iResolutionId))])
+    , "-ExecutePythonScript={} {} {}".format(gUnrealPyScript, wRGB_HeightMapTileFolder, "{}".format(iResolutionId))])
 
   else:
     wProcess_UnrealPython = subprocess.run([
@@ -74,7 +83,7 @@ def createHeightmapProject(iHeightmapFilePath, iDestinationFolder, iNewProjectNa
     , "-stdout"
     , "-FullStdOutLogOutput"
     , "-run=pythonscript"
-    , "-script={} {} {}".format(gUnrealPyScript, wHeightMapTileFolder, "{}".format(iResolutionId))])
+    , "-script={} {} {}".format(gUnrealPyScript, wRGB_HeightMapTileFolder, "{}".format(iResolutionId))])
 
 
 def main():
