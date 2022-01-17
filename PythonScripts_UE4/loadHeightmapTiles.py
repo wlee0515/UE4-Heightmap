@@ -45,6 +45,39 @@ def moveLevelAssets(iOldPathDir, iNewPathDir):
   editor_asset.rename_directory(iOldPathDir, iNewPathDir)
 
 
+def scanStringForTilePosition(iString):
+  iSections = iString.split("_")
+
+  wXPart = None
+  wYPart = None
+
+  print(iString)
+  print(iSections)
+  for wPart in iSections:
+    wFirstChar = wPart[0].lower()
+    print(wFirstChar)
+    if "x" == wFirstChar or "y" == wFirstChar:
+      iNumberSection = wPart[1:]
+      iDigitSection = iNumberSection
+      
+      print(iNumberSection)
+      print(iDigitSection)
+      if "-" is iNumberSection[0]:
+        iDigitSection = iNumberSection[1:]
+
+      if True == iDigitSection.isnumeric():
+        if "x" == wFirstChar:
+          wXPart = int(iNumberSection)
+        if "y" == wFirstChar:
+          wYPart = int(iNumberSection)
+
+  if None != wXPart and None != wYPart:
+    print([wXPart, wYPart])
+    return [wXPart, wYPart]
+
+  return None
+
+
 def loadLevel(iLevelPath):
 
   # Instances of Unreal classes
@@ -125,7 +158,7 @@ def drawTexture2DToTexturedRenderTarget2D(iWorldContext, iTexture2dPath, iTextur
 
   wCanvas, wSize, wDrawContext = render_lib.begin_draw_canvas_to_render_target(iWorldContext, wRenderTarget2D)
 
-  wCanvas.draw_texture(wTexture2D,screen_position=[0.0,0.0], screen_size=wSize, coordinate_position=[0.0,0.0], coordinate_size=[1.0,1.0], render_color=[1.0,1.0,1.0,1.0], blend_mode=unreal.BlendMode.BLEND_OPAQUE )
+  wCanvas.draw_texture(wTexture2D,screen_position=[0.0,0.0], screen_size=wSize, coordinate_position=[0.0,0.0], coordinate_size=[1.0,1.0], render_color=[1.0,1.0,1.0,1.0], blend_mode=unreal.BlendMode.BLEND_ADDITIVE )
 
   render_lib.end_draw_canvas_to_render_target(iWorldContext, wDrawContext)
 
@@ -285,6 +318,7 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
       unreal.log_error("Error Importing Heightmap : {}".format(wTexture_FullName) )
       return False
 
+    wTexture2D.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_NORMALMAP)
     wTexture2D.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_TERRAIN_HEIGHTMAP)
 
     unreal.log("Saving Texture2D")
@@ -332,6 +366,16 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
   
     editor_asset.save_asset(wTexturedRenderTarget2DPath)
 
+
+  unreal.log("Break-------------")
+
+  wTilePosition = scanStringForTilePosition(iAssetName)
+
+  if None == wTilePosition:
+    unreal.log("No Tile Position data found in asset Name")
+  else:
+    unreal.log("Asset Name Tile Position evaluated to be X:{} Y:{}".format(wTilePosition[0], wTilePosition[1]))
+
   unreal.log("Break-------------")
 
   # get List of Landscapes
@@ -345,17 +389,34 @@ def loadHeightmapIntoLevel(iHeightmapTilePath, iLevelPath, iAssetName, iResoluti
 
   unreal.log("Number of Actors found {}".format(len(wLandScapeList)))
 
-  for actor in wLandScapeList:
+  wCount = 0
+  for wActor in wLandScapeList:
 
     unreal.log("Break-------------")
 
-    unreal.log(actor)
+    unreal.log(wActor)
 
-    if True == actor.landscape_import_heightmap_from_render_target(wTexturedRenderTarget2D, import_height_from_rg_channel=True):
+    if True == wActor.landscape_import_heightmap_from_render_target(wTexturedRenderTarget2D, import_height_from_rg_channel=True):
       unreal.log("Import Terrain Heightmap Successful")
     else:
       unreal.log_error("Import Terrain Heightmap NOT Successful")
       return False
+
+    if None != wTilePosition:
+      wX = wTilePosition[0]*(gUnrealResolution[iResolutionId] - 1)*100
+      wY = wTilePosition[1]*(gUnrealResolution[iResolutionId] - 1)*100
+      wZ = 0
+      unreal.log("Moving Landscape to X:{} Y:{} Z:{}".format(wX, wY, wZ))
+
+      wActor.set_actor_location([wX,wY,wZ], False, True)
+
+    wNewActorName = iAssetName
+    if wCount > 0:
+      wNewActorName = iAssetName + "_{}".format(wCount)
+
+    wActor.set_actor_label(wNewActorName)
+    wCount = wCount + 1
+    
 
   unreal.log("Break-------------")
 

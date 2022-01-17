@@ -54,8 +54,8 @@ def convertImage_G16ToRGB8(iImagePath, iOutputFolder, iOutputImageName=None):
         if wInR < wMin:
           wMin = wInR
 
-        wOutR = int(wInR/255)
         wOutG = wInR % 255
+        wOutR = int((wInR-wOutG)/255)
         wOutB = 255
 
         wOutPixels[wX, wY] = (wOutR, wOutG, wOutB)
